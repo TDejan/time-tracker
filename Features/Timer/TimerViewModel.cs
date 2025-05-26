@@ -1,146 +1,192 @@
 ﻿using ClosedXML.Excel;
-using System;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Windows.Input;
 using System.Windows.Threading;
+using TimeTracker.Features.History.Models;
 using TimeTracker.Shared;
 
 namespace TimeTracker.Features.Timer
 {
-    public class TimerViewModel : INotifyPropertyChanged
-    {
-        // PlayStation identifier
-        public int Id { get; set; }
+	public class TimerViewModel : INotifyPropertyChanged
+	{
+		public int Id { get; set; }
+		public string Name { get; set; } = "";
+		public string TimerLabel => $"PlayStation {Id}";
 
-        // Name you assign to this timer session
-        public string Name { get; set; } = "";
+		private int _elapsed = 0;
+		private int ElapsedSeconds => _elapsed + (IsRunning ? (int)(DateTime.Now - _startTime).TotalSeconds : 0);
+		public string ElapsedTime => TimeSpan.FromSeconds(ElapsedSeconds).ToString(@"hh\:mm\:ss");
 
-        // Label to show PlayStation number
-        public string TimerLabel => $"PlayStation {Id}";
+		private string _price = "";
+		public string Price
+		{
+			get => _price;
+			private set
+			{
+				if (_price != value)
+				{
+					_price = value;
+					OnPropertyChanged(nameof(Price));
+				}
+			}
+		}
 
-        // Private backing field for elapsed seconds
-        private int _elapsed = 0;
+		public bool IsRunning => _timer?.IsEnabled == true;
 
-        // Private backing field for price display string
-        private string _price = "";
+		private bool _isPaused = false;
+		public bool IsPaused
+		{
+			get => _isPaused;
+			set
+			{
+				if (_isPaused != value)
+				{
+					_isPaused = value;
+					OnPropertyChanged(nameof(IsPaused));
+				}
+			}
+		}
 
-        // New computed property: total elapsed seconds (changed)
-        private int ElapsedSeconds => _elapsed + (IsRunning ? (int)(DateTime.Now - _startTime).TotalSeconds : 0);
 
-        // Public read-only property that formats total elapsed seconds into hh:mm:ss (changed)
-        public string ElapsedTime => TimeSpan.FromSeconds(ElapsedSeconds).ToString(@"hh\:mm\:ss");
+		public ICommand PauseResumeCommand { get; }
 
-        // Public property for displaying the price after timer stops
-        public string Price
-        {
-            get => _price;
-            private set
-            {
-                if (_price != value)
-                {
-                    _price = value;
-                    OnPropertyChanged(nameof(Price));
-                }
-            }
-        }
 
-        // Returns true if timer is currently running
-        public bool IsRunning => _timer?.IsEnabled == true;
+		private DispatcherTimer? _timer;
+		private DateTime _startTime;
 
-        // Internal timer that ticks every second
-        private DispatcherTimer? _timer;
+		private DateTime _lastPriceUpdate;
 
-        // The DateTime when timer was started
-        private DateTime _startTime;
+		public ICommand StartStopCommand { get; }
 
-        // Command bound to Start/Stop button
-        public ICommand StartStopCommand { get; }
+		public Action<HistoryEntry>? AddHistoryEntry { get; set; }
 
-        // INotifyPropertyChanged event
-        public event PropertyChangedEventHandler? PropertyChanged;
 
-        public TimerViewModel(int id)
-        {
-            Id = id;
+		public event PropertyChangedEventHandler? PropertyChanged;
 
-            // Initialize DispatcherTimer once here (changed)
-            _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            _timer.Tick += (s, e) =>
-            {
-                // Only notify UI to update elapsed time (changed)
-                OnPropertyChanged(nameof(ElapsedTime));
-            };
+		/// <summary>
+		/// Initializes <see cref="TimerNewModel", update price per minut./>
+		/// </summary>
+		/// <param name="id"></param>
+		public TimerViewModel(int id)
+		{
+			Id = id;
 
-            StartStopCommand = new RelayCommand(Toggle);
-        }
+			_timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+			_timer.Tick += (s, e) =>
+			{
+				OnPropertyChanged(nameof(ElapsedTime));
 
-        // Start or stop the timer
-        private void Toggle()
-        {
-            if (IsRunning)
-            {
-                // Stop the timer
-                _timer?.Stop();
+				if ((DateTime.Now - _lastPriceUpdate).TotalMinutes >= 1)
+				{
+					double minutes = ElapsedSeconds / 60.0;
+					Price = $"{(minutes * 0.084):0.00} BAM";
+					_lastPriceUpdate = DateTime.Now;
+				}
+			};
 
-                // Add elapsed seconds since last start (changed)
-                _elapsed += (int)(DateTime.Now - _startTime).TotalSeconds;
+			StartStopCommand = new RelayCommand(ToggleStartStop);
+			PauseResumeCommand = new RelayCommand(TogglePause);
+		}
 
-                // Calculate price: minutes * 0.084 and format as currency (changed)
-                double minutes = _elapsed / 60.0;
-                Price = $"{(minutes * 0.084):0.00} BAM";
+		private void TogglePause()
+		{
+			if (!IsRunning && !IsPaused) return;
 
-                // Log the session to Excel
-                LogSession();
-            }
-            else
-            {
-                // Start the timer
-                _startTime = DateTime.Now;
+			if (!IsPaused)
+			{
+				// Pause the timer
+				_timer?.Stop();
+				_elapsed += (int)(DateTime.Now - _startTime).TotalSeconds;
 
-                // Clear previous price when starting new session
-                Price = "";
+				// Calculate and show price immediately
+				double minutes = _elapsed / 60.0;
+				Price = $"{(minutes * 0.084):0.00} BAM";
 
-                _timer?.Start();
-            }
+				IsPaused = true;
+			}
+			else
+			{
+				// Resume the timer
+				_startTime = DateTime.Now;
+				_lastPriceUpdate = _startTime;
 
-            // Notify UI about running status and elapsed time changes
-            OnPropertyChanged(nameof(IsRunning));
-            OnPropertyChanged(nameof(ElapsedTime));
-        }
+				_timer?.Start();
+				IsPaused = false;
+			}
 
-        // Write session data to daily Excel file
-        private void LogSession()
-        {
-            string folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
-            Directory.CreateDirectory(folder);
-            string filePath = Path.Combine(folder, $"logs_{DateTime.Now:yyyy-MM-dd}.xlsx");
+			OnPropertyChanged(nameof(ElapsedTime));
+		}
 
-            using var workbook = File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
-            var sheetName = $"PS{Id}";
-            var sheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name == sheetName) ?? workbook.Worksheets.Add(sheetName);
+		private void ToggleStartStop()
+		{
+			if (IsRunning && !IsPaused)
+			{
+				_timer?.Stop();
+				_elapsed += (int)(DateTime.Now - _startTime).TotalSeconds;
 
-            // Get next available row
-            var row = sheet.LastRowUsed()?.RowNumber() + 1 ?? 1;
-            sheet.Cell(row, 1).Value = DateTime.Now.ToString("HH:mm:ss");
-            sheet.Cell(row, 2).Value = Name;
-            sheet.Cell(row, 3).Value = ElapsedTime;
+				double minutes = _elapsed / 60.0;
+				Price = $"{(minutes * 0.084):0.00} BAM";
 
-            workbook.SaveAs(filePath);
+				string durationString = TimeSpan.FromSeconds(_elapsed).ToString(@"hh\:mm\:ss");
+				
+				LogSession();
 
-            // Reset elapsed seconds after logging session
-            _elapsed = 0;
+				HistoryEntry entry = new()
+				{
+					Time = DateTime.Now.ToString("HH:mm:ss"),
+					Name = Name,
+					Duration = durationString,
+					Description = string.Empty,
+					Price = Price
+				};
 
-            // Notify UI that elapsed time changed
-            OnPropertyChanged(nameof(ElapsedTime));
-        }
+				AddHistoryEntry?.Invoke(entry);
+			}
 
-        // Helper method to raise PropertyChanged events
-        protected void OnPropertyChanged(string propertyName)
-        {
-            ArgumentNullException.ThrowIfNull(propertyName);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-    }
+			else
+			{
+				_startTime = DateTime.Now;
+				_lastPriceUpdate = _startTime;
+
+				if (IsPaused)
+					IsPaused = false;
+
+				Price = "";
+
+				_timer?.Start();
+			}
+
+			OnPropertyChanged(nameof(IsRunning));
+			OnPropertyChanged(nameof(ElapsedTime));
+		}
+
+		private void LogSession()
+		{
+			string folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+			Directory.CreateDirectory(folder);
+			string filePath = Path.Combine(folder, $"logs_{DateTime.Now:yyyy-MM-dd}.xlsx");
+
+			using var workbook = File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
+			var sheetName = $"PS{Id}";
+			var sheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name == sheetName) ?? workbook.Worksheets.Add(sheetName);
+
+			var row = sheet.LastRowUsed()?.RowNumber() + 1 ?? 1;
+			sheet.Cell(row, 1).Value = DateTime.Now.ToString("HH:mm:ss");
+			sheet.Cell(row, 2).Value = Name;
+			sheet.Cell(row, 3).Value = ElapsedTime;
+
+			workbook.SaveAs(filePath);
+
+			_elapsed = 0;
+
+			OnPropertyChanged(nameof(ElapsedTime));
+		}
+
+		protected void OnPropertyChanged(string propertyName)
+		{
+			ArgumentNullException.ThrowIfNull(propertyName);
+			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+		}
+	}
 }
