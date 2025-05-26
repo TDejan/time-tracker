@@ -1,0 +1,8 @@
+*.user
+*.suo
+*.cache
+*.db
+*.log
+bin/
+obj/
+.vs/
