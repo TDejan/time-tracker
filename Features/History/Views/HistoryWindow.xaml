@@ -37,8 +37,8 @@
         <ListView ItemsSource="{Binding HistoryEntries}" Grid.Row="0" >
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Time" DisplayMemberBinding="{Binding Time}" Width="100"/>
-                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="150"/>
+                    <GridViewColumn Header="Session Start Time" DisplayMemberBinding="{Binding StartTime}" Width="100"/>
+                    <GridViewColumn Header="Comment" DisplayMemberBinding="{Binding Comment}" Width="150"/>
                     <GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration}" Width="100"/>
                     <GridViewColumn Header="Price" DisplayMemberBinding="{Binding Price}" Width="100"/>
                 </GridView>

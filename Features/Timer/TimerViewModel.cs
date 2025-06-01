@@ -1,6 +1,4 @@
-﻿using ClosedXML.Excel;
-using System.ComponentModel;
-using System.IO;
+﻿using System.ComponentModel;
 using System.Windows.Input;
 using System.Windows.Threading;
 using TimeTracker.Features.History.Models;
@@ -10,15 +8,30 @@ namespace TimeTracker.Features.Timer
 {
 	public class TimerViewModel : INotifyPropertyChanged
 	{
+		public string TimerLabel => $"Console {Id}";
+
+		public static readonly int NumberOfTimers = 6;
 		public int Id { get; set; }
-		public string Name { get; set; } = "";
-		public string TimerLabel => $"PlayStation {Id}";
+
+		private string _preview = string.Empty;
+		public string Preview
+		{
+			get => _preview;
+			set
+			{
+				if (_preview != value)
+				{
+					_preview = value;
+					OnPropertyChanged(nameof(Preview));
+				}
+			}
+		}
 
 		private int _elapsed = 0;
 		private int ElapsedSeconds => _elapsed + (IsRunning ? (int)(DateTime.Now - _startTime).TotalSeconds : 0);
 		public string ElapsedTime => TimeSpan.FromSeconds(ElapsedSeconds).ToString(@"hh\:mm\:ss");
 
-		private string _price = "";
+		private string _price = string.Empty;
 		public string Price
 		{
 			get => _price;
@@ -52,62 +65,77 @@ namespace TimeTracker.Features.Timer
 		public ICommand PauseResumeCommand { get; }
 
 
-		private DispatcherTimer? _timer;
+		private readonly DispatcherTimer? _timer;
+		
 		private DateTime _startTime;
 
 		private DateTime _lastPriceUpdate;
 
+		private DateTime? _sessionStartTime = null;
+
+		private string? _comment;
+		public string? Comment
+		{
+			get => _comment;
+			set
+			{
+				_comment = value;
+				OnPropertyChanged(nameof(Comment));
+			}
+		}
+
 		public ICommand StartStopCommand { get; }
+		public ICommand RefreshPriceCommand { get; }
 
 		public Action<HistoryEntry>? AddHistoryEntry { get; set; }
 
-
 		public event PropertyChangedEventHandler? PropertyChanged;
 
-		/// <summary>
-		/// Initializes <see cref="TimerNewModel", update price per minut./>
-		/// </summary>
-		/// <param name="id"></param>
 		public TimerViewModel(int id)
 		{
 			Id = id;
 
 			_timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+
 			_timer.Tick += (s, e) =>
 			{
 				OnPropertyChanged(nameof(ElapsedTime));
 
-				if ((DateTime.Now - _lastPriceUpdate).TotalMinutes >= 1)
+				RecalculatePriceAfter(60);
+
+				void RecalculatePriceAfter(int seconds)
 				{
-					double minutes = ElapsedSeconds / 60.0;
-					Price = $"{(minutes * 0.084):0.00} BAM";
-					_lastPriceUpdate = DateTime.Now;
+					if ((DateTime.Now - _lastPriceUpdate).TotalSeconds >= seconds)
+					{
+						CalculatePrice();
+						_lastPriceUpdate = DateTime.Now;
+					}
 				}
 			};
 
 			StartStopCommand = new RelayCommand(ToggleStartStop);
 			PauseResumeCommand = new RelayCommand(TogglePause);
+			RefreshPriceCommand = new RelayCommand(RefreshPrice);
 		}
 
 		private void TogglePause()
 		{
-			if (!IsRunning && !IsPaused) return;
+			if (!IsRunning && !IsPaused)
+			{
+				return;
+			};
 
 			if (!IsPaused)
 			{
-				// Pause the timer
 				_timer?.Stop();
 				_elapsed += (int)(DateTime.Now - _startTime).TotalSeconds;
 
-				// Calculate and show price immediately
-				double minutes = _elapsed / 60.0;
-				Price = $"{(minutes * 0.084):0.00} BAM";
+				CalculatePrice();
 
 				IsPaused = true;
 			}
 			else
 			{
-				// Resume the timer
 				_startTime = DateTime.Now;
 				_lastPriceUpdate = _startTime;
 
@@ -125,34 +153,40 @@ namespace TimeTracker.Features.Timer
 				_timer?.Stop();
 				_elapsed += (int)(DateTime.Now - _startTime).TotalSeconds;
 
-				double minutes = _elapsed / 60.0;
-				Price = $"{(minutes * 0.084):0.00} BAM";
+				CalculatePrice();
 
 				string durationString = TimeSpan.FromSeconds(_elapsed).ToString(@"hh\:mm\:ss");
 				
-				LogSession();
-
 				HistoryEntry entry = new()
 				{
-					Time = DateTime.Now.ToString("HH:mm:ss"),
-					Name = Name,
+					StartTime = _sessionStartTime?.ToString("HH:mm:ss") ?? DateTime.Now.ToString("HH:mm:ss"),
 					Duration = durationString,
-					Description = string.Empty,
+					Comment = Comment ?? string.Empty,
 					Price = Price
 				};
 
 				AddHistoryEntry?.Invoke(entry);
+
+				_sessionStartTime = null;
 			}
 
 			else
 			{
+				_elapsed = 0;
 				_startTime = DateTime.Now;
 				_lastPriceUpdate = _startTime;
 
-				if (IsPaused)
-					IsPaused = false;
+				if (_sessionStartTime == null)
+				{
+					_sessionStartTime = _startTime;
+				}
 
-				Price = "";
+				if (IsPaused)
+				{
+					IsPaused = false;
+				}
+
+				Price = string.Empty;
 
 				_timer?.Start();
 			}
@@ -161,26 +195,16 @@ namespace TimeTracker.Features.Timer
 			OnPropertyChanged(nameof(ElapsedTime));
 		}
 
-		private void LogSession()
+		private void RefreshPrice()
 		{
-			string folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
-			Directory.CreateDirectory(folder);
-			string filePath = Path.Combine(folder, $"logs_{DateTime.Now:yyyy-MM-dd}.xlsx");
+			CalculatePrice();
+			OnPropertyChanged(nameof(Price));
+		}
 
-			using var workbook = File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
-			var sheetName = $"PS{Id}";
-			var sheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name == sheetName) ?? workbook.Worksheets.Add(sheetName);
-
-			var row = sheet.LastRowUsed()?.RowNumber() + 1 ?? 1;
-			sheet.Cell(row, 1).Value = DateTime.Now.ToString("HH:mm:ss");
-			sheet.Cell(row, 2).Value = Name;
-			sheet.Cell(row, 3).Value = ElapsedTime;
-
-			workbook.SaveAs(filePath);
-
-			_elapsed = 0;
-
-			OnPropertyChanged(nameof(ElapsedTime));
+		private void CalculatePrice()
+		{
+			double minutes = ElapsedSeconds / 60.0;
+			Price = $"{(minutes * 0.084):0.00} BAM";
 		}
 
 		protected void OnPropertyChanged(string propertyName)

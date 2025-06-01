@@ -6,23 +6,37 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon>assets\app.ico</ApplicationIcon>
+    <ApplicationIcon>assets\icons\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="assets\app.ico" />
+    <None Remove="assets\excel.ico" />
+    <None Remove="assets\pause.ico" />
+    <None Remove="assets\pencil.ico" />
+    <None Remove="assets\refresh.ico" />
+    <None Remove="assets\resume.ico" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="assets\app.ico" />
+    <Content Include="assets\icons\app.ico" />
+    <Resource Include="assets\icons\excel.ico" />
+    <Resource Include="assets\icons\pause.ico" />
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="assets\app.ico" />
+    <Resource Include="assets\icons\app.ico" />
+    <Resource Include="assets\icons\pencil.ico" />
+    <Resource Include="assets\icons\refresh.ico" />
+    <Resource Include="assets\icons\resume.ico" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Shared\Services\" />
   </ItemGroup>
 
 </Project>

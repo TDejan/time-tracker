@@ -5,6 +5,7 @@ namespace TimeTracker.Shared
     public class RelayCommand(Action execute, Func<bool>? canExecute = null) : ICommand
     {
         private readonly Action _execute = execute;
+
         private readonly Func<bool>? _canExecute = canExecute;
 
         public event EventHandler? CanExecuteChanged;

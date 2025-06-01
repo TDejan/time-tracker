@@ -4,11 +4,7 @@ using System.Windows;
 
 namespace TimeTracker
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : Application
     {
     }
-
 }
