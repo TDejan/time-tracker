@@ -12,6 +12,7 @@
   <ItemGroup>
     <None Remove="assets\app.ico" />
     <None Remove="assets\excel.ico" />
+    <None Remove="assets\icons\pencil.ico" />
     <None Remove="assets\pause.ico" />
     <None Remove="assets\pencil.ico" />
     <None Remove="assets\refresh.ico" />

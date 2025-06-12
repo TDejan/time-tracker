@@ -15,6 +15,76 @@
         <converters:StringToVisibilityConverter x:Key="StringToVisibility"/>
         <converters:BoolToPauseResumeConverter x:Key="BoolToPauseResume"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+        <Style x:Key="ModernOutlineButton" TargetType="Button">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Foreground" Value="#007ACC"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#007ACC"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                        Background="{TemplateBinding Background}" 
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="10"
+                        SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Margin="10,4"
+                                      RecognizesAccessKey="True"/>
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+                            <!-- Hover -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E6F2FB"/>
+                            </Trigger>
+
+                            <!-- Pressed -->
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                     To="0.95" Duration="0:0:0.1" />
+                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                     To="0.95" Duration="0:0:0.1" />
+                                            <ColorAnimation Storyboard.TargetName="border"
+                                                    Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                    To="#D0E9FA" Duration="0:0:0.1" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                     To="1" Duration="0:0:0.1" />
+                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                     To="1" Duration="0:0:0.1" />
+                                            <ColorAnimation Storyboard.TargetName="border"
+                                                    Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                    To="#E6F2FB" Duration="0:0:0.1" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="FontSize" Value="16"/>
@@ -135,10 +205,10 @@
         <StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10">
                     <Button Content="Game Session Log"
-            Padding="10,5"
-            Style="{StaticResource ModernButton}"
-            Click="ViewRecentPlays_Click"
-            VerticalAlignment="Center" />
+        Style="{StaticResource ModernOutlineButton}"
+        Click="ViewRecentPlays_Click"
+        VerticalAlignment="Center" />
+
 
                     <!-- Vertical Separator -->
                     <Border Width="1" Height="24" Margin="10,0" Background="Gray" VerticalAlignment="Center"/>
@@ -225,15 +295,30 @@
                                              Grid.Column="0" />
 
                                                                         <Button Grid.Column="1"
-                                            Padding="0" Margin="3,0,0,0"
-                                            VerticalAlignment="Center"
-                                            ToolTip="Edit comments"
-                                            Click="EditComments_Click"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Cursor="Hand">
-                                            <Image Source="/assets/icons/pencil.ico" Width="16" Height="16" />
-                                        </Button>
+        Padding="0" Margin="3,0,0,0"
+        VerticalAlignment="Center"
+        ToolTip="Edit comments"
+        Click="EditComments_Click"
+        Background="Transparent"
+        BorderThickness="0"
+        Cursor="Hand">
+    <Button.Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Button.Style>
+    <Image Source="/assets/icons/pencil.ico" Width="20" Height="20" />
+</Button>
+
 
 
                                 </Grid>

@@ -159,6 +159,7 @@ namespace TimeTracker.Features.Timer
 				
 				HistoryEntry entry = new()
 				{
+					TimerId = Id,
 					StartTime = _sessionStartTime?.ToString("HH:mm:ss") ?? DateTime.Now.ToString("HH:mm:ss"),
 					Duration = durationString,
 					Comment = Comment ?? string.Empty,

@@ -151,29 +151,34 @@ namespace TimeTracker
 			}
 		}
 
-		private void ExportAllTimersToExcel(string filePath)
-		{
-			using var workbook = new XLWorkbook();
+        private void ExportAllTimersToExcel(string filePath)
+        {
+            using var workbook = new XLWorkbook();
+            var sheet = workbook.Worksheets.Add("All Sessions");
 
-			foreach (var timer in Timers)
-			{
-				string sheetName = $"PS{timer.Id}";
-				var sheet = workbook.Worksheets.Add(sheetName);
+            sheet.Cell(1, 1).Value = "Console";
+            sheet.Cell(1, 2).Value = "Start Time";
+            sheet.Cell(1, 3).Value = "Duration";
+            sheet.Cell(1, 4).Value = "Price";
+            sheet.Cell(1, 5).Value = "Comment";
 
-				sheet.Cell(1, 1).Value = "Console";
-				sheet.Cell(1, 2).Value = "Name";
-				sheet.Cell(1, 3).Value = "Elapsed Time";
-				sheet.Cell(1, 4).Value = "Price";
-				sheet.Cell(1, 5).Value = "Comment";
+			var orderedEntries = HistoryEntries
+				.OrderBy(he => he.StartTime)
+				.ToList();
 
-				sheet.Cell(2, 1).Value = timer.TimerLabel;
-				sheet.Cell(2, 2).Value = timer.Preview;
-				sheet.Cell(2, 3).Value = timer.ElapsedTime;
-				sheet.Cell(2, 4).Value = timer.Price;
-				sheet.Cell(2, 5).Value = timer.Comment;
-			}
+            for (int i = 0; i < orderedEntries.Count; i++)
+            {
+                var entry = orderedEntries[i];
+                int row = i + 2;
 
-			workbook.SaveAs(filePath);
-		}
-	}
+                sheet.Cell(row, 1).Value = $"Console {entry.TimerId}";
+                sheet.Cell(row, 2).Value = entry.StartTime ?? string.Empty;
+                sheet.Cell(row, 3).Value = entry.Duration ?? string.Empty;
+                sheet.Cell(row, 4).Value = entry.Price ?? string.Empty;
+                sheet.Cell(row, 5).Value = entry.Comment ?? string.Empty;
+            }
+
+            workbook.SaveAs(filePath);
+        }
+    }
 }
